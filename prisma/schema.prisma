@@ -1,0 +1,201 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  String    @id @default(uuid())
+  clerkId             String    @unique
+  name                String?
+  email               String?   @unique
+  role                String    @default("student")
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  youtubeAccessToken  String?
+  youtubeRefreshToken String?
+  youtubeChannelId    String?
+  youtubeTokenExpiry  DateTime?
+
+  // Relations
+  courses     Course[]
+  enrollments Enrollment[]
+  progress    Progress[]
+  notes       Note[]
+  questions   Question[]
+  answers     Answer[]
+  liveSessions LiveSession[]
+}
+
+model Course {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  imageUrl    String?
+  price       Float?
+  isPublished Boolean  @default(false)
+  isApproved  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId      String
+
+  // Relations
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sections    Section[]
+  enrollments Enrollment[]
+  categories  CategoriesOnCourses[]
+}
+
+model Section {
+  id        String   @id @default(uuid())
+  title     String
+  order     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  courseId  String
+
+  // Relations
+  course  Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons Lesson[]
+}
+
+model Lesson {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  videoId     String?
+  duration    Int?     @default(0) // in seconds
+  order       Int      @default(0)
+  type        String   @default("video") // video, text, quiz, etc.
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  sectionId   String
+
+  // Relations
+  section   Section    @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  progress  Progress[]
+  notes     Note[]
+  questions Question[]
+}
+
+model Category {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  courses CategoriesOnCourses[]
+}
+
+model CategoriesOnCourses {
+  courseId   String
+  categoryId String
+  assignedAt DateTime @default(now())
+
+  // Relations
+  course   Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([courseId, categoryId])
+}
+
+model Enrollment {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    String
+  courseId  String
+
+  // Relations
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+}
+
+model Progress {
+  id        String   @id @default(uuid())
+  completed Boolean  @default(false)
+  position  Int      @default(0) // video position in seconds
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    String
+  lessonId  String
+
+  // Relations
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+}
+
+model Note {
+  id        String   @id @default(uuid())
+  content   String
+  timestamp Int? // timestamp in the video where the note was taken
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    String
+  lessonId  String
+
+  // Relations
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+}
+
+model Question {
+  id        String   @id @default(uuid())
+  content   String
+  timestamp Int? // timestamp in the video where the question was asked
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    String
+  lessonId  String
+
+  // Relations
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson  Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  answers Answer[]
+}
+
+model Answer {
+  id         String   @id @default(uuid())
+  content    String
+  isAccepted Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  userId     String
+  questionId String
+
+  // Relations
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+}
+
+model LiveSession {
+  id                String    @id @default(uuid())
+  title             String
+  description       String?
+  broadcastId       String?
+  streamId          String?
+  streamUrl         String?
+  streamKey         String?
+  scheduledStartTime DateTime?
+  actualStartTime    DateTime?
+  endTime            DateTime?
+  status            String    @default("scheduled") // scheduled, live, ended, cancelled
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  userId            String
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
